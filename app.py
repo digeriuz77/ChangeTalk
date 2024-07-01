@@ -56,7 +56,7 @@ client = OpenAI(api_key=st.secrets["openai_api_key"])
 oars_analyzer = OARSAnalyzer()
 
 # Initialize DataManager
-data_manager = DataManager()
+#data_manager = DataManager()
 
 def upload_chat_log_to_azure(chat_history, conversation_id):
     connection_string = st.secrets["AZURE_STORAGE_CONNECTION_STRING"]
