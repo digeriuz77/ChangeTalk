@@ -7,7 +7,7 @@ import uuid
 from oars_analyzer import OARSAnalyzer
 
 # Streamlit configuration
-st.set_page_config(page_title="Motivational Interviewing Chatbot", layout="wide")
+st.set_page_config(page_title="Motivational Interviewing Changetalk Coachbot", layout="wide")
 
 # Initialize session state
 if "chat_history" not in st.session_state:
