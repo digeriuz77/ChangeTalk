@@ -150,7 +150,15 @@ with controls_container:
                 save_chat()
         with col3:
             if st.button("Summarize"):
-                # ... (keep existing summarize code)
+                st.session_state.current_assistant_id = "asst_2IN1dkowoziRpYyzSdgJbPZY"
+                chat_log = " ".join([f"{msg['role']}: {msg['content']}" for msg in st.session_state.chat_history])
+                add_message_to_thread(f"Please summarize the following chat log:\n{chat_log}")
+                summary = run_assistant()
+                if summary:
+                    st.session_state.chat_history.append({"role": "assistant", "content": summary})
+                    data_manager.add_message(st.session_state.conversation_id, "assistant", summary)
+                st.session_state.current_assistant_id = "asst_RAJ5HUmKrqKXAoBDhacjvMy8"  # Reset to main assistant
+                st.experimental_rerun()
         with col4:
             if st.button("Toggle Analysis"):
                 st.session_state.show_analysis = not st.session_state.show_analysis
