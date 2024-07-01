@@ -10,6 +10,28 @@ from data_manager import DataManager
 from oars_analyzer import OARSAnalyzer
 from visualization import visualize_change_talk, visualize_sentiment
 
+# Import stage-specific functions
+from agenda import set_agenda
+from typical_day import describe_typical_day
+from decision_balance import create_decision_balance
+from build_confidence import build_confidence
+from explore_options import explore_options
+from key_question import ask_key_question
+from plan_agreement import create_plan
+from summarize import summarize_conversation
+
+# Stage functions dictionary
+stage_functions = {
+    1: set_agenda,
+    2: describe_typical_day,
+    3: create_decision_balance,
+    4: build_confidence,
+    5: explore_options,
+    6: ask_key_question,
+    7: create_plan,
+    8: summarize_conversation
+}
+
 # Initialize session state
 def initialize_session_state():
     if "chat_history" not in st.session_state:
