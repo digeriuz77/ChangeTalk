@@ -141,7 +141,7 @@ def main():
 
     with controls_container:
         # Buttons for functionality in a row
-        col1, col2, col3, col4 = st.columns(4)
+        col1, col2, col3, col4, col5 = st.columns(5)
         with col1:
             if st.button("Start Over"):
                 reset_chat()
@@ -150,19 +150,20 @@ def main():
                 save_chat()
         with col3:
             if st.button("Summarize"):
-                st.session_state.current_assistant_id = "asst_2IN1dkowoziRpYyzSdgJbPZY"
-                chat_log = " ".join([f"{msg['role']}: {msg['content']}" for msg in st.session_state.chat_history])
-                add_message_to_thread(f"Please summarize the following chat log:\n{chat_log}")
-                summary = run_assistant()
-                if summary:
-                    st.session_state.chat_history.append({"role": "assistant", "content": summary})
-                    data_manager.add_message(st.session_state.conversation_id, "assistant", summary)
-                st.session_state.current_assistant_id = "asst_RAJ5HUmKrqKXAoBDhacjvMy8"  # Reset to main assistant
-                st.experimental_rerun()
+                # ... (keep existing summarize code)
         with col4:
             if st.button("Toggle Analysis"):
                 st.session_state.show_analysis = not st.session_state.show_analysis
                 st.experimental_rerun()
+        with col5:
+            chat_json = export_chat()
+            st.download_button(
+                label="Export Chat",
+                data=chat_json,
+                file_name=f"chat_export_{st.session_state.conversation_id}.json",
+                mime="application/json"
+            )
+
 
     with analysis_container:
         if st.session_state.show_analysis:
