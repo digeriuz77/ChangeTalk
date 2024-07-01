@@ -139,7 +139,7 @@ def main():
 
             st.experimental_rerun()
 
-    with controls_container:
+with controls_container:
         # Buttons for functionality in a row
         col1, col2, col3, col4, col5 = st.columns(5)
         with col1:
