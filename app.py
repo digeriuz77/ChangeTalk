@@ -62,9 +62,10 @@ def main():
     user_input = st.chat_input("Type your message here...")
     if user_input:
         st.session_state.chat_history.append({"role": "user", "content": user_input})
-        
+
+
         # Analyze user input
-        analysis = oars_analyzer.analyze_input(user_input)
+        analysis = oars_analyzer.analyze_input(user_input, st.session_state.chat_history)
         change_talk_score = calculate_change_talk_score(analysis)
         st.session_state.change_talk_scores.append(change_talk_score)
         
