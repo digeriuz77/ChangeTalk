@@ -8,7 +8,10 @@ from datetime import datetime
 from oars_analyzer import OARSAnalyzer
 from change_talk_score_calculator import calculate_change_talk_score
 from data_manager import DataManager
-from ui_components import display_chat_history, display_progress_bar, display_change_talk_score
+from ui_components import (
+    display_progress_bar, display_chat_history, display_change_talk_score,
+    display_confidence_slider, display_download_button
+)
 from visualization import visualize_change_talk, visualize_sentiment
 
 # Streamlit configuration
@@ -117,6 +120,12 @@ def main():
     display_change_talk_score(st.session_state.change_talk_scores)
     visualize_change_talk(st.session_state.change_talk_scores)
     visualize_sentiment([analysis['sentiment'] for analysis in st.session_state.chat_history if 'sentiment' in analysis])
+
+    confidence = display_confidence_slider()
+    st.write(f"Your confidence level: {confidence}")
+
+    plan_summary = summarize_conversation()  # This should be implemented to generate a plan summary
+    display_download_button(plan_summary)
 
     if st.button("End Conversation"):
         end_conversation()
