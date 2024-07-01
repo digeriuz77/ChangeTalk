@@ -1,7 +1,7 @@
 def calculate_change_talk_score(analysis_result):
     # Weights for different components (adjust as needed)
-    SENTIMENT_WEIGHT = 0.3
-    CHANGE_TALK_WEIGHT = 0.4
+    SENTIMENT_WEIGHT = 0.25
+    CHANGE_TALK_WEIGHT = 0.45
     COHERENCE_WEIGHT = 0.15
     SEMANTIC_SIMILARITY_WEIGHT = 0.15
 
