@@ -1,18 +1,10 @@
 import streamlit as st
 from openai import OpenAI
-import streamlit as st
-import openai
-from openai import OpenAI
 from oars_analyzer import OARSAnalyzer
+from change_talk_score_calculator import calculate_change_talk_score
+from openai_system_message_generator import get_openai_messages
 
-# Import other modules as before
-
-# Initialize OARSAnalyzer
-oars_analyzer = OARSAnalyzer()
-
-# ... (keep other initializations)
-
-# Import our custom modules
+# Import custom modules
 from agenda import set_agenda
 from typical_day import describe_typical_day
 from decision_balance import create_decision_balance
@@ -46,9 +38,14 @@ if "plan_created" not in st.session_state:
     st.session_state.plan_created = False
 if "conversation_summarized" not in st.session_state:
     st.session_state.conversation_summarized = False
+if "change_talk_scores" not in st.session_state:
+    st.session_state.change_talk_scores = []
 
 # Initialize OpenAI client
 client = OpenAI(api_key=st.secrets["OPENAI_API_KEY"])
+
+# Initialize OARSAnalyzer
+oars_analyzer = OARSAnalyzer()
 
 def main():
     st.title("Motivational Interviewing Chatbot")
@@ -150,6 +147,33 @@ def main():
                 file_name="change_plan.txt",
                 mime="text/plain"
             )
+    def handle_open_conversation():
+    user_input = st.chat_input("Type your message here...")
+    if user_input:
+        st.session_state.chat_history.append({"role": "user", "content": user_input})
+        
+        # Analyze user input
+        analysis = oars_analyzer.analyze_input(user_input, st.session_state.chat_history)
+        
+        # Calculate change talk score
+        change_talk_score = calculate_change_talk_score(analysis)
+        st.session_state.change_talk_scores.append(change_talk_score)
+        
+        # Generate OpenAI messages
+        messages = get_openai_messages(st.session_state.chat_history, change_talk_score)
+        
+        # Get response from OpenAI
+        response = client.chat.completions.create(
+            model="gpt-3.5-turbo",
+            messages=messages
+        )
+        assistant_response = response.choices[0].message.content
+        
+        st.session_state.chat_history.append({"role": "assistant", "content": assistant_response})
+        st.experimental_rerun()
+
+if __name__ == "__main__":
+    main()
 
 if __name__ == "__main__":
     main()
