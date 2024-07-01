@@ -20,7 +20,7 @@ if "conversation_id" not in st.session_state:
     st.session_state.conversation_id = str(uuid.uuid4())
 
 # Initialize OpenAI client
-client = OpenAI(api_key=st.secrets["OPENAI_API_KEY"])
+client = OpenAI(api_key=st.secrets["openai_api_key"])
 
 # Initialize OARSAnalyzer
 oars_analyzer = OARSAnalyzer()
