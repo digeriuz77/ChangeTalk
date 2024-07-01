@@ -133,7 +133,7 @@ def reset_conversation():
     st.session_state.welcomed = False
     st.session_state.conversation_id = str(random.randint(1000, 9999))
     st.session_state.thread_id = None
-    data_manager.start_conversation(st.session_state.conversation_id)
+    # data_manager.start_conversation(st.session_state.conversation_id)
 
 def main():
     st.title("Motivational Interviewing Chatbot")
@@ -148,7 +148,7 @@ def main():
 
     if user_input:
         st.session_state.chat_history.append({"role": "user", "content": user_input})
-        #data_manager.add_message(st.session_state.conversation_id, "user", user_input)
+        # data_manager.add_message(st.session_state.conversation_id, "user", user_input)
         add_message_to_thread(user_input)
         
         # Analyze user input
@@ -162,7 +162,7 @@ def main():
         
         if assistant_response:
             st.session_state.chat_history.append({"role": "assistant", "content": assistant_response})
-            #data_manager.add_message(st.session_state.conversation_id, "assistant", assistant_response)
+            # data_manager.add_message(st.session_state.conversation_id, "assistant", assistant_response)
         
         st.experimental_rerun()
 
@@ -191,7 +191,7 @@ def main():
     with col3:
         if st.button("End Conversation and Upload"):
             if upload_chat_log_to_azure(st.session_state.chat_history, st.session_state.conversation_id):
-                #data_manager.end_conversation(st.session_state.conversation_id)
+                # data_manager.end_conversation(st.session_state.conversation_id)
                 st.success("Chat log uploaded to Azure Storage!")
                 reset_conversation()
     with col4:
