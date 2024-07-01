@@ -13,7 +13,7 @@ from oars_analyzer import OARSAnalyzer
 from change_talk_score_calculator import calculate_change_talk_score
 from ui_components import display_progress_bar, display_change_talk_score
 from visualization import visualize_change_talk, visualize_sentiment
-#from data_manager import DataManager
+# from data_manager import DataManager
 
 # Streamlit configuration
 st.set_page_config(page_title="Motivational Interviewing Chatbot", layout="wide")
@@ -44,7 +44,7 @@ ASSISTANT_ID = "asst_RAJ5HUmKrqKXAoBDhacjvMy8"
 oars_analyzer = OARSAnalyzer()
 
 # Initialize DataManager
-#data_manager = DataManager()
+# data_manager = DataManager()
 
 # Welcome messages
 welcome_messages = [
@@ -143,17 +143,12 @@ def main():
         st.session_state.chat_history.append({"role": "assistant", "content": welcome_message})
         st.session_state.welcomed = True
 
-    # Display chat history
-    for message in st.session_state.chat_history:
-        with st.chat_message(message["role"]):
-            st.write(message["content"])
-
     # Single text input for user messages
     user_input = st.chat_input("Type your message here...")
 
     if user_input:
         st.session_state.chat_history.append({"role": "user", "content": user_input})
-        data_manager.add_message(st.session_state.conversation_id, "user", user_input)
+        #data_manager.add_message(st.session_state.conversation_id, "user", user_input)
         add_message_to_thread(user_input)
         
         # Analyze user input
@@ -167,9 +162,14 @@ def main():
         
         if assistant_response:
             st.session_state.chat_history.append({"role": "assistant", "content": assistant_response})
-            data_manager.add_message(st.session_state.conversation_id, "assistant", assistant_response)
+            #data_manager.add_message(st.session_state.conversation_id, "assistant", assistant_response)
         
         st.experimental_rerun()
+
+    # Display chat history
+    for message in st.session_state.chat_history:
+        with st.chat_message(message["role"]):
+            st.write(message["content"])
 
     # Display progress and scores
     display_progress_bar(st.session_state.current_step, 8)  # Assuming 8 steps in total
@@ -191,7 +191,7 @@ def main():
     with col3:
         if st.button("End Conversation and Upload"):
             if upload_chat_log_to_azure(st.session_state.chat_history, st.session_state.conversation_id):
-                data_manager.end_conversation(st.session_state.conversation_id)
+                #data_manager.end_conversation(st.session_state.conversation_id)
                 st.success("Chat log uploaded to Azure Storage!")
                 reset_conversation()
     with col4:
