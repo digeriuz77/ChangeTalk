@@ -50,6 +50,8 @@ def initialize_session_state():
         st.session_state.sentiment_scores = []
     if "show_analysis" not in st.session_state:
         st.session_state.show_analysis = False
+    if "current_stage" not in st.session_state:
+        st.session_state.current_stage = 1
 
 initialize_session_state()
 
@@ -68,7 +70,7 @@ def add_message_to_thread(content):
     client.beta.threads.messages.create(
         thread_id=st.session_state.thread_id,
         role="user",
-        content=content
+        content=f"Current stage: {st.session_state.current_stage}\n\n{content}"
     )
 
 def run_assistant():
@@ -103,6 +105,7 @@ def reset_chat():
     st.session_state.change_talk_scores = []
     st.session_state.sentiment_scores = []
     st.session_state.conversation_id = f'chat_{int(time.time())}'
+    st.session_state.current_stage = 1
     data_manager.start_conversation(st.session_state.conversation_id)
     st.experimental_rerun()
 
@@ -113,7 +116,8 @@ def save_chat():
         "chat_history": st.session_state.chat_history,
         "change_talk_scores": st.session_state.change_talk_scores,
         "sentiment_scores": st.session_state.sentiment_scores,
-        "conversation_id": st.session_state.conversation_id
+        "conversation_id": st.session_state.conversation_id,
+        "current_stage": st.session_state.current_stage
     }
     joblib.dump(data, filename)
     st.success(f"Chat history saved as {filename}")
@@ -124,6 +128,7 @@ def load_chat(filename):
     st.session_state.change_talk_scores = data["change_talk_scores"]
     st.session_state.sentiment_scores = data["sentiment_scores"]
     st.session_state.conversation_id = data["conversation_id"]
+    st.session_state.current_stage = data.get("current_stage", 1)
     st.session_state.welcome_message_displayed = True
     st.experimental_rerun()
 
@@ -135,15 +140,57 @@ def export_chat():
         "conversation_id": st.session_state.conversation_id,
         "messages": st.session_state.chat_history,
         "change_talk_scores": st.session_state.change_talk_scores,
-        "sentiment_scores": st.session_state.sentiment_scores
+        "sentiment_scores": st.session_state.sentiment_scores,
+        "current_stage": st.session_state.current_stage
     }
     return json.dumps(chat_data, indent=2)
+
+def calculate_change_talk_score(analysis):
+    return (analysis['change_talk_score'] + analysis['sentiment']) / 2
+
+def update_assistant_prompt():
+    system_message = """
+    You are an expert motivational interviewing (MI) coach. Guide users through exploring and resolving their ambivalence about behavior change. Use OARS techniques and maintain a compassionate, non-judgmental tone.
+
+    Use these signals to communicate with the app:
+    🔄 : Move to the next conversation step
+    📊 : Request the current change talk score
+    📝 : Request a conversation summary
+    🏁 : End the conversation
+
+    Guide the conversation through these stages:
+    1. Setting the agenda
+    2. Exploring a typical day
+    3. Creating a decision balance
+    4. Building confidence
+    5. Exploring options
+    6. Asking key questions
+    7. Creating a change plan
+    8. Summarizing the conversation
+
+    Use the 🔄 signal when you're ready to move to the next stage. Adapt your approach based on the user's readiness for change, which you can gauge by requesting the change talk score with 📊.
+
+    Remember, your goal is to help the user explore their own motivations for change, not to persuade or convince them.
+    """
+    client.beta.assistants.update(
+        assistant_id=st.session_state.current_assistant_id,
+        instructions=system_message
+    )
 
 welcome_messages = [
     "Hi there! I'm a coach specializing in motivational interviewing. What change are you considering?",
     "Hello! I'm here to guide you through the process of change. What would you like to focus on today?",
     "Welcome! As a motivational interviewing coach, I'm here to support you. What change are you thinking about making?"
 ]
+
+def parse_assistant_response(response):
+    signals = {
+        "next_step": "🔄" in response,
+        "request_score": "📊" in response,
+        "request_summary": "📝" in response,
+        "end_conversation": "🏁" in response
+    }
+    return signals, response
 
 def main():
     st.title("Motivational Interviewing Chatbot")
@@ -184,8 +231,31 @@ def main():
                 assistant_response = run_assistant()
 
             if assistant_response:
-                st.session_state.chat_history.append({"role": "assistant", "content": assistant_response})
-                data_manager.add_message(st.session_state.conversation_id, "assistant", assistant_response)
+                signals, cleaned_response = parse_assistant_response(assistant_response)
+                st.session_state.chat_history.append({"role": "assistant", "content": cleaned_response})
+                data_manager.add_message(st.session_state.conversation_id, "assistant", cleaned_response)
+
+                if signals["next_step"] and st.session_state.current_stage <= 8:
+                    try:
+                        result = stage_functions[st.session_state.current_stage]()
+                        if result:
+                            add_message_to_thread(f"Stage {st.session_state.current_stage} result: {result}")
+                            st.session_state.current_stage += 1
+                    except Exception as e:
+                        st.error(f"Error in stage {st.session_state.current_stage}: {str(e)}")
+                        add_message_to_thread(f"Error occurred in stage {st.session_state.current_stage}. Please try again or move to the next stage.")
+
+                if signals["request_score"]:
+                    score = calculate_change_talk_score(analysis)
+                    add_message_to_thread(f"Current change talk score: {score}")
+
+                if signals["request_summary"]:
+                    summary = summarize_conversation(st.session_state.chat_history)
+                    add_message_to_thread(f"Conversation summary: {summary}")
+
+                if signals["end_conversation"]:
+                    st.success("Conversation ended. Thank you for participating!")
+                    reset_chat()
 
             st.experimental_rerun()
 
@@ -238,4 +308,5 @@ def main():
                 visualize_sentiment(st.session_state.sentiment_scores)
 
 if __name__ == "__main__":
+    update_assistant_prompt()
     main()
