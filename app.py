@@ -7,7 +7,6 @@ from datetime import datetime
 
 from oars_analyzer import OARSAnalyzer
 from change_talk_score_calculator import calculate_change_talk_score
-from data_manager import DataManager
 from ui_components import (
     display_progress_bar, display_chat_history, display_change_talk_score,
     display_confidence_slider, display_download_button
@@ -33,10 +32,11 @@ if "current_step" not in st.session_state:
     st.session_state.current_step = 0
 if "conversation_id" not in st.session_state:
     st.session_state.conversation_id = f'chat_{int(time.time())}'
+if "show_analysis" not in st.session_state:
+    st.session_state.show_analysis = False
 
-# Initialize OARSAnalyzer and DataManager
+# Initialize OARSAnalyzer
 oars_analyzer = OARSAnalyzer()
-data_manager = DataManager()
 
 def save_chat_history(chat_id, messages):
     os.makedirs('data', exist_ok=True)
@@ -86,7 +86,6 @@ def summarize_conversation():
     return "Conversation summary..."
 
 def end_conversation():
-    data_manager.end_conversation(st.session_state.conversation_id)
     save_chat_history(st.session_state.conversation_id, st.session_state.chat_history)
 
 def main():
@@ -97,9 +96,6 @@ def main():
         st.subheader("Conversation Progress")
         display_progress_bar(st.session_state.current_step, 8)
         
-        st.subheader("Change Talk Score")
-        display_change_talk_score(st.session_state.change_talk_scores)
-        
         confidence = display_confidence_slider()
         st.write(f"Your confidence level: {confidence}")
         
@@ -107,6 +103,9 @@ def main():
             end_conversation()
             st.success("Conversation ended and data saved.")
             st.experimental_rerun()
+
+        if st.button("Show/Hide Conversation Analysis"):
+            st.session_state.show_analysis = not st.session_state.show_analysis
 
     # Main chat area
     chat_container = st.container()
@@ -118,7 +117,6 @@ def main():
 
     if user_input:
         st.session_state.chat_history.append({"role": "user", "content": user_input})
-        data_manager.add_message(st.session_state.conversation_id, "user", user_input)
         
         analysis = oars_analyzer.analyze_input(user_input)
         change_talk_score = calculate_change_talk_score(analysis)
@@ -130,22 +128,23 @@ def main():
         processed_response = handle_assistant_response(assistant_response)
         
         st.session_state.chat_history.append({"role": "assistant", "content": processed_response})
-        data_manager.add_message(st.session_state.conversation_id, "assistant", processed_response)
         
         save_chat_history(st.session_state.conversation_id, st.session_state.chat_history)
         
         st.experimental_rerun()
 
-    # Visualizations and download button (below chat input)
-    st.subheader("Conversation Analysis")
-    col1, col2 = st.columns(2)
-    with col1:
-        visualize_change_talk(st.session_state.change_talk_scores)
-    with col2:
-        visualize_sentiment([msg.get('sentiment', 0) for msg in st.session_state.chat_history if msg['role'] == 'user'])
+    # Conversation Analysis (shown/hidden based on button click)
+    if st.session_state.show_analysis:
+        st.subheader("Conversation Analysis")
+        col1, col2 = st.columns(2)
+        with col1:
+            visualize_change_talk(st.session_state.change_talk_scores)
+        with col2:
+            sentiment_scores = [msg.get('sentiment', 0) for msg in st.session_state.chat_history if msg['role'] == 'user']
+            visualize_sentiment(sentiment_scores)
 
-    plan_summary = summarize_conversation()
-    display_download_button(plan_summary)
+        plan_summary = summarize_conversation()
+        display_download_button(plan_summary)
 
 if __name__ == "__main__":
     main()
