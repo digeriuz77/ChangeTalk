@@ -4,9 +4,7 @@ from azure.storage.blob import BlobServiceClient
 import json
 import uuid
 
-# Import custom modules (ensure these are implemented correctly)
 from oars_analyzer import OARSAnalyzer
-from change_talk_score_calculator import calculate_change_talk_score
 
 # Streamlit configuration
 st.set_page_config(page_title="Motivational Interviewing Chatbot", layout="wide")
@@ -16,6 +14,8 @@ if "chat_history" not in st.session_state:
     st.session_state.chat_history = []
 if "change_talk_scores" not in st.session_state:
     st.session_state.change_talk_scores = []
+if "sentiment_scores" not in st.session_state:
+    st.session_state.sentiment_scores = []
 if "conversation_id" not in st.session_state:
     st.session_state.conversation_id = str(uuid.uuid4())
 
@@ -62,29 +62,34 @@ def main():
     user_input = st.chat_input("Type your message here...")
     if user_input:
         st.session_state.chat_history.append({"role": "user", "content": user_input})
-
-
+        
         # Analyze user input
         analysis = oars_analyzer.analyze_input(user_input, st.session_state.chat_history)
-        change_talk_score = calculate_change_talk_score(analysis)
+        sentiment = analysis['sentiment']
+        change_talk_score = analysis['change_talk_score']
         st.session_state.change_talk_scores.append(change_talk_score)
+        st.session_state.sentiment_scores.append(sentiment)
         
         # Prepare messages for AI
         messages = [
             {"role": "system", "content": "You are a motivational interviewing expert. Respond to the user's input."},
             *st.session_state.chat_history
         ]
-        
+
         # Get AI response
         ai_response = get_ai_response(messages)
         if ai_response:
             st.session_state.chat_history.append({"role": "assistant", "content": ai_response})
             st.experimental_rerun()
 
-    # Display change talk score
+    # Display scores
     if st.session_state.change_talk_scores:
-        st.line_chart(st.session_state.change_talk_scores)
+        st.line_chart({
+            "Change Talk Score": st.session_state.change_talk_scores,
+            "Sentiment": st.session_state.sentiment_scores
+        })
         st.write(f"Current Change Talk Score: {st.session_state.change_talk_scores[-1]:.2f}")
+        st.write(f"Current Sentiment: {st.session_state.sentiment_scores[-1]:.2f}")
 
     # End conversation and upload chat log
     if st.button("End Conversation and Upload"):
@@ -93,6 +98,7 @@ def main():
             # Reset conversation
             st.session_state.chat_history = []
             st.session_state.change_talk_scores = []
+            st.session_state.sentiment_scores = []
             st.session_state.conversation_id = str(uuid.uuid4())
             st.experimental_rerun()
         else:
