@@ -8,7 +8,7 @@ from azure.storage.blob import BlobServiceClient
 from oars_analyzer import OARSAnalyzer
 from change_talk_score_calculator import calculate_change_talk_score
 from openai_system_message_generator import get_openai_messages
-from data_manager import DataManager
+#from data_manager import DataManager
 from ui_components import (
     display_progress_bar, display_chat_history, display_change_talk_score,
     display_confidence_slider, display_download_button
