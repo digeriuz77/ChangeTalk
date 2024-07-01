@@ -13,7 +13,7 @@ from oars_analyzer import OARSAnalyzer
 from change_talk_score_calculator import calculate_change_talk_score
 from ui_components import display_progress_bar, display_change_talk_score
 from visualization import visualize_change_talk, visualize_sentiment
-from data_manager import DataManager
+#from data_manager import DataManager
 
 # Streamlit configuration
 st.set_page_config(page_title="Motivational Interviewing Chatbot", layout="wide")
@@ -44,7 +44,7 @@ ASSISTANT_ID = "asst_RAJ5HUmKrqKXAoBDhacjvMy8"
 oars_analyzer = OARSAnalyzer()
 
 # Initialize DataManager
-data_manager = DataManager()
+#data_manager = DataManager()
 
 # Welcome messages
 welcome_messages = [
