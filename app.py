@@ -10,7 +10,7 @@ from datetime import datetime
 
 # Import custom modules
 from oars_analyzer import OARSAnalyzer
-from change_talk_score_calculator import calculate_change_talk_score
+#from change_talk_score_calculator import calculate_change_talk_score
 from ui_components import display_progress_bar, display_change_talk_score
 from visualization import visualize_change_talk, visualize_sentiment
 # from data_manager import DataManager
