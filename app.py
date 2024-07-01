@@ -92,9 +92,28 @@ def end_conversation():
 def main():
     st.title("Motivational Interviewing Chatbot")
 
-    display_chat_history(st.session_state.chat_history)
-    display_progress_bar(st.session_state.current_step, 8)
+    # Sidebar for additional controls and information
+    with st.sidebar:
+        st.subheader("Conversation Progress")
+        display_progress_bar(st.session_state.current_step, 8)
+        
+        st.subheader("Change Talk Score")
+        display_change_talk_score(st.session_state.change_talk_scores)
+        
+        confidence = display_confidence_slider()
+        st.write(f"Your confidence level: {confidence}")
+        
+        if st.button("End Conversation"):
+            end_conversation()
+            st.success("Conversation ended and data saved.")
+            st.experimental_rerun()
 
+    # Main chat area
+    chat_container = st.container()
+    with chat_container:
+        display_chat_history(st.session_state.chat_history)
+
+    # User input area
     user_input = st.chat_input("Type your message here...")
 
     if user_input:
@@ -117,20 +136,16 @@ def main():
         
         st.experimental_rerun()
 
-    display_change_talk_score(st.session_state.change_talk_scores)
-    visualize_change_talk(st.session_state.change_talk_scores)
-    visualize_sentiment([analysis['sentiment'] for analysis in st.session_state.chat_history if 'sentiment' in analysis])
+    # Visualizations and download button (below chat input)
+    st.subheader("Conversation Analysis")
+    col1, col2 = st.columns(2)
+    with col1:
+        visualize_change_talk(st.session_state.change_talk_scores)
+    with col2:
+        visualize_sentiment([msg.get('sentiment', 0) for msg in st.session_state.chat_history if msg['role'] == 'user'])
 
-    confidence = display_confidence_slider()
-    st.write(f"Your confidence level: {confidence}")
-
-    plan_summary = summarize_conversation()  # This should be implemented to generate a plan summary
+    plan_summary = summarize_conversation()
     display_download_button(plan_summary)
-
-    if st.button("End Conversation"):
-        end_conversation()
-        st.success("Conversation ended and data saved.")
-        st.experimental_rerun()
 
 if __name__ == "__main__":
     main()
