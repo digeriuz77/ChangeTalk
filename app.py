@@ -138,8 +138,7 @@ def main():
                 data_manager.add_message(st.session_state.conversation_id, "assistant", assistant_response)
 
             st.experimental_rerun()
-
-with controls_container:
+ with controls_container:
         # Buttons for functionality in a row
         col1, col2, col3, col4, col5 = st.columns(5)
         with col1:
@@ -171,7 +170,6 @@ with controls_container:
                 file_name=f"chat_export_{st.session_state.conversation_id}.json",
                 mime="application/json"
             )
-
 
     with analysis_container:
         if st.session_state.show_analysis:
