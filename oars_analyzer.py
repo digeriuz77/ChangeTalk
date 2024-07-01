@@ -5,7 +5,13 @@ from sklearn.metrics.pairwise import cosine_similarity
 import spacy
 
 nltk.download('vader_lexicon', quiet=True)
-nlp = spacy.load('en_core_web_sm')
+
+try:
+    nlp = spacy.load('en_core_web_sm')
+except IOError:
+    print("Downloading spaCy model...")
+    spacy.cli.download("en_core_web_sm")
+    nlp = spacy.load('en_core_web_sm')
 
 class OARSAnalyzer:
     def __init__(self):
