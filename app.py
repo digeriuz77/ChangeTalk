@@ -1,150 +1,136 @@
 import streamlit as st
 from openai import OpenAI
 import time
-import joblib
-import os
+import json
 from datetime import datetime
-
-from oars_analyzer import OARSAnalyzer
-from change_talk_score_calculator import calculate_change_talk_score
-from ui_components import (
-    display_progress_bar, display_chat_history, display_change_talk_score,
-    display_confidence_slider, display_download_button
-)
-from visualization import visualize_change_talk, visualize_sentiment
-
-# Streamlit configuration
-st.set_page_config(page_title="Motivational Interviewing Chatbot", layout="wide")
-
-# Initialize OpenAI client
-client = OpenAI(api_key=st.secrets["openai_api_key"])
-
-# Constants
-AI_AVATAR_ICON = '✨'
-ASSISTANT_ID = "asst_RAJ5HUmKrqKXAoBDhacjvMy8"
+import random
 
 # Initialize session state
-if "chat_history" not in st.session_state:
-    st.session_state.chat_history = []
-if "change_talk_scores" not in st.session_state:
-    st.session_state.change_talk_scores = []
-if "current_step" not in st.session_state:
-    st.session_state.current_step = 0
-if "conversation_id" not in st.session_state:
-    st.session_state.conversation_id = f'chat_{int(time.time())}'
-if "show_analysis" not in st.session_state:
-    st.session_state.show_analysis = False
+def initialize_session_state():
+    if "chat_history" not in st.session_state:
+        st.session_state.chat_history = []
+    if "thread_id" not in st.session_state:
+        st.session_state.thread_id = None
+    if "current_assistant_id" not in st.session_state:
+        st.session_state.current_assistant_id = "asst_RAJ5HUmKrqKXAoBDhacjvMy8"
+    if "welcome_message_displayed" not in st.session_state:
+        st.session_state.welcome_message_displayed = False
 
-# Initialize OARSAnalyzer
-oars_analyzer = OARSAnalyzer()
+initialize_session_state()
 
-def save_chat_history(chat_id, messages):
-    os.makedirs('data', exist_ok=True)
-    joblib.dump(messages, f'data/{chat_id}_messages.joblib')
+# Initialize OpenAI client
+client = OpenAI(api_key=st.secrets["OPENAI_API_KEY"])
 
-def load_chat_history(chat_id):
-    try:
-        return joblib.load(f'data/{chat_id}_messages.joblib')
-    except:
-        return []
+def create_thread_if_not_exists():
+    if not st.session_state.thread_id:
+        thread = client.beta.threads.create()
+        st.session_state.thread_id = thread.id
 
-def stream_openai_response(response):
-    message_placeholder = st.empty()
-    full_response = ''
-    for chunk in response:
-        if chunk.choices[0].delta.content is not None:
-            full_response += chunk.choices[0].delta.content
-            message_placeholder.markdown(full_response + '▌')
-    message_placeholder.markdown(full_response)
-    return full_response
-
-def run_assistant(user_input):
-    messages = [{"role": "user", "content": user_input}]
-    response = client.chat.completions.create(
-        model="gpt-3.5-turbo",
-        messages=messages,
-        stream=True
+def add_message_to_thread(content):
+    create_thread_if_not_exists()
+    client.beta.threads.messages.create(
+        thread_id=st.session_state.thread_id,
+        role="user",
+        content=content
     )
-    return stream_openai_response(response)
 
-def handle_assistant_response(response):
-    if '🔄' in response:
-        st.session_state.current_step += 1
-        return response.replace('🔄', '')
-    elif '📊' in response:
-        score = st.session_state.change_talk_scores[-1] if st.session_state.change_talk_scores else 0
-        return f"The current change talk score is {score:.2f}"
-    elif '📝' in response:
-        return summarize_conversation()
-    elif '🏁' in response:
-        end_conversation()
-        return "Conversation ended. Thank you for participating."
-    return response
+def run_assistant():
+    create_thread_if_not_exists()
+    run = client.beta.threads.runs.create(
+        thread_id=st.session_state.thread_id,
+        assistant_id=st.session_state.current_assistant_id
+    )
+    
+    while True:
+        run_status = client.beta.threads.runs.retrieve(
+            thread_id=st.session_state.thread_id,
+            run_id=run.id
+        )
+        if run_status.status == 'completed':
+            break
+        elif run_status.status == 'failed':
+            st.error(f"Run failed: {run_status.last_error}")
+            return None
+        time.sleep(1)
+    
+    messages = client.beta.threads.messages.list(
+        thread_id=st.session_state.thread_id
+    )
+    
+    return messages.data[0].content[0].text.value
 
-def summarize_conversation():
-    # Implement conversation summarization logic here
-    return "Conversation summary..."
+def reset_chat():
+    st.session_state.chat_history = []
+    st.session_state.welcome_message_displayed = False
+    st.session_state.thread_id = None
+    st.experimental_rerun()
 
-def end_conversation():
-    save_chat_history(st.session_state.conversation_id, st.session_state.chat_history)
+def save_chat():
+    timestamp = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
+    filename = f"chat_history_{timestamp}.json"
+    with open(filename, "w") as f:
+        json.dump(st.session_state.chat_history, f)
+    st.success(f"Chat history saved as {filename}")
+
+welcome_messages = [
+    "Hi there! I'm a coach specializing in motivational interviewing. What change are you considering?",
+    "Hello! I'm here to guide you through the process of change. What would you like to focus on today?",
+    "Welcome! As a motivational interviewing coach, I'm here to support you. What change are you thinking about making?"
+]
 
 def main():
     st.title("Motivational Interviewing Chatbot")
 
-    # Sidebar for additional controls and information
-    with st.sidebar:
-        st.subheader("Conversation Progress")
-        display_progress_bar(st.session_state.current_step, 8)
-        
-        confidence = display_confidence_slider()
-        st.write(f"Your confidence level: {confidence}")
-        
-        if st.button("End Conversation"):
-            end_conversation()
-            st.success("Conversation ended and data saved.")
+    # Create a container for chat and controls
+    chat_container = st.container()
+    controls_container = st.container()
+
+    with chat_container:
+        st.subheader("Chat")
+
+        # Display a random welcome message if chat history is empty
+        if not st.session_state.get('welcome_message_displayed', False):
+            welcome_message = random.choice(welcome_messages)
+            st.session_state.chat_history.append({"role": "assistant", "content": welcome_message})
+            st.session_state.welcome_message_displayed = True
+
+        for message in st.session_state.chat_history:
+            with st.chat_message(message["role"]):
+                st.write(message["content"])
+
+        user_input = st.chat_input("Type your message...", key="user_input")
+
+        if user_input:
+            st.session_state.chat_history.append({"role": "user", "content": user_input})
+            add_message_to_thread(user_input)
+
+            with st.spinner("Thinking..."):
+                assistant_response = run_assistant()
+
+            if assistant_response:
+                st.session_state.chat_history.append({"role": "assistant", "content": assistant_response})
+
             st.experimental_rerun()
 
-        if st.button("Show/Hide Conversation Analysis"):
-            st.session_state.show_analysis = not st.session_state.show_analysis
-
-    # Main chat area
-    chat_container = st.container()
-    with chat_container:
-        display_chat_history(st.session_state.chat_history)
-
-    # User input area
-    user_input = st.chat_input("Type your message here...")
-
-    if user_input:
-        st.session_state.chat_history.append({"role": "user", "content": user_input})
-        
-        analysis = oars_analyzer.analyze_input(user_input)
-        change_talk_score = calculate_change_talk_score(analysis)
-        st.session_state.change_talk_scores.append(change_talk_score)
-        
-        with st.chat_message("assistant", avatar=AI_AVATAR_ICON):
-            assistant_response = run_assistant(user_input)
-        
-        processed_response = handle_assistant_response(assistant_response)
-        
-        st.session_state.chat_history.append({"role": "assistant", "content": processed_response})
-        
-        save_chat_history(st.session_state.conversation_id, st.session_state.chat_history)
-        
-        st.experimental_rerun()
-
-    # Conversation Analysis (shown/hidden based on button click)
-    if st.session_state.show_analysis:
-        st.subheader("Conversation Analysis")
-        col1, col2 = st.columns(2)
+    with controls_container:
+        # Buttons for functionality in a row
+        col1, col2, col3 = st.columns(3)
         with col1:
-            visualize_change_talk(st.session_state.change_talk_scores)
+            if st.button("Start Over"):
+                reset_chat()
         with col2:
-            sentiment_scores = [msg.get('sentiment', 0) for msg in st.session_state.chat_history if msg['role'] == 'user']
-            visualize_sentiment(sentiment_scores)
-
-        plan_summary = summarize_conversation()
-        display_download_button(plan_summary)
+            if st.button("Save Chat"):
+                save_chat()
+        with col3:
+            if st.button("Summarize"):
+                st.session_state.current_assistant_id = "asst_2IN1dkowoziRpYyzSdgJbPZY"
+                chat_log = " ".join([f"{msg['role']}: {msg['content']}" for msg in st.session_state.chat_history])
+                add_message_to_thread(f"Please summarize the following chat log:\n{chat_log}")
+                summary = run_assistant()
+                if summary:
+                    st.session_state.chat_history.append({"role": "assistant", "content": summary})
+                st.session_state.current_assistant_id = "asst_RAJ5HUmKrqKXAoBDhacjvMy8"  # Reset to main assistant
+                st.experimental_rerun()
 
 if __name__ == "__main__":
     main()
