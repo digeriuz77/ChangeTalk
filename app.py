@@ -2,8 +2,10 @@ import streamlit as st
 from openai import OpenAI
 import time
 import json
+import joblib
 from datetime import datetime
 import random
+import os
 from data_manager import DataManager
 from oars_analyzer import OARSAnalyzer
 from visualization import visualize_change_talk, visualize_sentiment
@@ -84,10 +86,36 @@ def reset_chat():
 
 def save_chat():
     timestamp = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
-    filename = f"chat_history_{timestamp}.json"
-    with open(filename, "w") as f:
-        json.dump(st.session_state.chat_history, f)
+    filename = f"chat_history_{timestamp}.joblib"
+    data = {
+        "chat_history": st.session_state.chat_history,
+        "change_talk_scores": st.session_state.change_talk_scores,
+        "sentiment_scores": st.session_state.sentiment_scores,
+        "conversation_id": st.session_state.conversation_id
+    }
+    joblib.dump(data, filename)
     st.success(f"Chat history saved as {filename}")
+
+def load_chat(filename):
+    data = joblib.load(filename)
+    st.session_state.chat_history = data["chat_history"]
+    st.session_state.change_talk_scores = data["change_talk_scores"]
+    st.session_state.sentiment_scores = data["sentiment_scores"]
+    st.session_state.conversation_id = data["conversation_id"]
+    st.session_state.welcome_message_displayed = True
+    st.experimental_rerun()
+
+def get_saved_chats():
+    return [f for f in os.listdir(".") if f.startswith("chat_history_") and f.endswith(".joblib")]
+
+def export_chat():
+    chat_data = {
+        "conversation_id": st.session_state.conversation_id,
+        "messages": st.session_state.chat_history,
+        "change_talk_scores": st.session_state.change_talk_scores,
+        "sentiment_scores": st.session_state.sentiment_scores
+    }
+    return json.dumps(chat_data, indent=2)
 
 welcome_messages = [
     "Hi there! I'm a coach specializing in motivational interviewing. What change are you considering?",
@@ -138,9 +166,10 @@ def main():
                 data_manager.add_message(st.session_state.conversation_id, "assistant", assistant_response)
 
             st.experimental_rerun()
- with controls_container:
+
+    with controls_container:
         # Buttons for functionality in a row
-        col1, col2, col3, col4, col5 = st.columns(5)
+        col1, col2, col3, col4, col5, col6 = st.columns(6)
         with col1:
             if st.button("Start Over"):
                 reset_chat()
@@ -148,6 +177,12 @@ def main():
             if st.button("Save Chat"):
                 save_chat()
         with col3:
+            saved_chats = get_saved_chats()
+            if saved_chats:
+                selected_chat = st.selectbox("Load Chat", saved_chats)
+                if st.button("Load"):
+                    load_chat(selected_chat)
+        with col4:
             if st.button("Summarize"):
                 st.session_state.current_assistant_id = "asst_2IN1dkowoziRpYyzSdgJbPZY"
                 chat_log = " ".join([f"{msg['role']}: {msg['content']}" for msg in st.session_state.chat_history])
@@ -158,11 +193,11 @@ def main():
                     data_manager.add_message(st.session_state.conversation_id, "assistant", summary)
                 st.session_state.current_assistant_id = "asst_RAJ5HUmKrqKXAoBDhacjvMy8"  # Reset to main assistant
                 st.experimental_rerun()
-        with col4:
+        with col5:
             if st.button("Toggle Analysis"):
                 st.session_state.show_analysis = not st.session_state.show_analysis
                 st.experimental_rerun()
-        with col5:
+        with col6:
             chat_json = export_chat()
             st.download_button(
                 label="Export Chat",
